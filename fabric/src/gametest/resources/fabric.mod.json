@@ -1,0 +1,16 @@
+{
+	"schemaVersion": 1,
+	"id": "nr137_lib_gametest",
+	"version": "1.0.0",
+	"name": "NR137 Lib game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"de.nr137.lib.fabric.gametest.FabricGameTests"
+		]
+	},
+	"depends": {
+		"nr137_lib": "*",
+		"fabric-gametest-api-v1": "*"
+	}
+}
