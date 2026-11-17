@@ -30,6 +30,24 @@ class LibTest {
 		assertEquals(java.util.List.of("Short."), TextWidth.wrap("Short.", TextWidth.TOOLTIP));
 	}
 
+	record Inner(int a, int b) {
+	}
+
+	record Options(boolean on, Inner inner, java.util.Map<String, Double> chances) {
+	}
+
+	@Test
+	void configKeepsDefaultsMergesRecordsAndTakesMapsWhole(@TempDir Path folder) throws java.io.IOException {
+		Path file = folder.resolve("config.json");
+		Options defaults = new Options(true, new Inner(1, 2), java.util.Map.of("x", 0.5, "y", 0.25));
+		Files.writeString(file, "{\"inner\": {\"b\": 7}, \"chances\": {\"y\": 1.0, \"z\": 0.1}}");
+		Options read = JsonConfig.load(file, Options.class, defaults);
+		assertTrue(read.on(), "missing options keep their defaults");
+		assertEquals(new Inner(1, 7), read.inner(), "records are merged option by option");
+		assertEquals(java.util.Map.of("y", 1.0, "z", 0.1), read.chances(), "maps are taken whole: added and removed entries stay so");
+		assertTrue(Files.readString(file).contains("\"on\""), "the file gets every option");
+	}
+
 	@Test
 	void translationsUseThePlayersLanguageAndFallBackToEnglish() {
 		Translations texts = Translations.load(LibTest.class, "nr137_lib_test");

@@ -13,7 +13,8 @@ import de.nr137.lib.Nr137Lib;
 
 /**
  * A config file in JSON for a record type. Options missing from the file keep their defaults (not Gson's false and 0),
- * objects are merged key by key, and the file is written again with every option, so new options show up in it.
+ * nested records are merged option by option, maps are taken from the file as they are (so entries can be added and
+ * removed), and the file is written again with every option, so new options show up in it.
  */
 public final class JsonConfig {
 	public static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
@@ -30,7 +31,7 @@ public final class JsonConfig {
 		try {
 			JsonObject merged = GSON.toJsonTree(defaults).getAsJsonObject();
 			JsonObject read = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
-			merge(merged, read);
+			merge(merged, read, type);
 			T config = GSON.fromJson(merged, type);
 			if (!merged.equals(read)) {
 				save(file, config);
@@ -42,13 +43,23 @@ public final class JsonConfig {
 		}
 	}
 
-	private static void merge(JsonObject into, JsonObject from) {
-		for (var entry : from.entrySet()) {
-			JsonElement existing = into.get(entry.getKey());
-			if (existing != null && existing.isJsonObject() && entry.getValue().isJsonObject()) {
-				merge(existing.getAsJsonObject(), entry.getValue().getAsJsonObject());
-			} else if (existing != null) {
-				into.add(entry.getKey(), entry.getValue());
+	/** Merges {@code from} into {@code into} (the defaults of {@code type}): records option by option, the rest whole. */
+	private static void merge(JsonObject into, JsonObject from, java.lang.reflect.Type type) {
+		Class<?> raw = com.google.gson.reflect.TypeToken.get(type).getRawType();
+		if (!raw.isRecord()) {
+			from.entrySet().forEach(entry -> into.add(entry.getKey(), entry.getValue()));
+			return;
+		}
+		for (var component : raw.getRecordComponents()) {
+			JsonElement value = from.get(component.getName());
+			if (value == null) {
+				continue;
+			}
+			JsonElement existing = into.get(component.getName());
+			if (component.getType().isRecord() && existing != null && existing.isJsonObject() && value.isJsonObject()) {
+				merge(existing.getAsJsonObject(), value.getAsJsonObject(), component.getGenericType());
+			} else {
+				into.add(component.getName(), value);
 			}
 		}
 	}
